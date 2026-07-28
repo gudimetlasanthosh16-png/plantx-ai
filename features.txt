@@ -1,0 +1,18 @@
+Future Features & Enhancements Checklist
+
+Check the box next to any feature you want me to implement, and let me know when you've made a selection!
+
+[ ] Voice Assistant (Text-to-speech for results and voice commands)
+[ ] Weather-based Plant Advice (Local weather integration to predict diseases)
+[ ] GPS-based Disease Alerts (Warn users of plant diseases spreading in their area)
+[ ] Multilingual Support (Support for local languages like Hindi, Spanish, etc.)
+[ ] Plant Encyclopedia (A searchable database of plants and their care guides)
+[ ] Crop Yield Estimation (AI predicts harvest volume based on plant health)
+[ ] Soil Analysis Integration (Input soil data to get better fertilizer recommendations)
+[ ] QR Code Plant Reports (Generate shareable QR codes for plant health reports)
+[ ] AI Chatbot for Plant Care (A conversational bot to ask follow-up questions)
+[ ] Progressive Web App (PWA) (Make the app installable on mobile devices)
+[ ] Offline Image Queue (Save images offline and upload when internet is back)
+[ ] Image Comparison (Compare 'before' and 'after' treatment photos)
+[ ] Save Scan History (Save past plant scans to local storage or a database)
+[ ] User Authentication (Allow users to create accounts to sync data across devices)
