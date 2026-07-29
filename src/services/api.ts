@@ -80,7 +80,7 @@ Return ONLY valid JSON matching this exact structure:
       },
       body: JSON.stringify({
         model: "openai/gpt-4o",
-        max_tokens: 1000,
+        max_tokens: 800,
         messages: [
           {
             role: "user",

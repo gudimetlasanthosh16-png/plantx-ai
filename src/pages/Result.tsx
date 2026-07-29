@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
-import { Activity, AlertTriangle, Droplets, Sun, Info, HeartPulse, CheckCircle2, ShieldCheck, Share2, X } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { Activity, AlertTriangle, Droplets, Sun, Info, HeartPulse, CheckCircle2, ShieldCheck, Share2, X, Download } from 'lucide-react';
 import { analyzePlantImage, type PlantAnalysisResult } from '../services/api';
 
 const LoadingScreen = () => {
@@ -54,6 +55,7 @@ const Result: React.FC = () => {
   const [result, setResult] = useState<PlantAnalysisResult | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const resultRef = React.useRef<HTMLDivElement>(null);
 
   const imageSrc = location.state?.image;
 
@@ -99,12 +101,28 @@ const Result: React.FC = () => {
     }
   };
 
+  const handleShareAsImage = async () => {
+    if (resultRef.current && result) {
+      try {
+        const canvas = await html2canvas(resultRef.current, { scale: 2, useCORS: true });
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `PlantX-Report-${result.plant_name.replace(/\s+/g, '-')}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (error) {
+        console.error("Failed to generate image", error);
+      }
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-3xl overflow-hidden shadow-xl border border-primary/10"
+        ref={resultRef}
       >
         {/* Header Section */}
         <div className="md:flex">
@@ -141,13 +159,20 @@ const Result: React.FC = () => {
               </div>
             )}
             
-            <div className="mt-6 pt-6 border-t border-gray-100">
+            <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col gap-3">
                <button 
                 onClick={handleShare}
                 className="w-full bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
                >
                  <Share2 className="h-5 w-5" />
                  Generate QR Report
+               </button>
+               <button 
+                onClick={handleShareAsImage}
+                className="w-full bg-primary border-2 border-primary text-white hover:bg-primary/90 hover:border-primary/90 transition-colors font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
+               >
+                 <Download className="h-5 w-5" />
+                 Save as Image
                </button>
             </div>
           </div>
