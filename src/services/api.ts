@@ -29,7 +29,8 @@ export const analyzePlantImage = async (base64Image: string): Promise<PlantAnaly
   const prompt = `
 You are a professional agricultural and botanical expert.
 Analyze the uploaded plant image in extreme detail based specifically on the visual evidence in the image.
-IMPORTANT: You MUST respond ONLY with a raw JSON object. Do not include markdown formatting (like \`\`\`json), and do not include any other text. 
+If the image is blurry, low quality, or hard to see, DO NOT refuse to answer and DO NOT output an error. Instead, do your absolute best to guess the plant and its condition based on whatever shapes or colors are visible. Be as lenient as possible to provide a helpful analysis.
+IMPORTANT: You MUST respond ONLY with a raw JSON object. Do not include markdown formatting, and do not include any other text. 
 Identify:
 - Plant Name
 - Scientific Name
@@ -79,7 +80,7 @@ Return ONLY valid JSON matching this exact structure:
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o",
+        model: "openrouter/free",
         max_tokens: 800,
         messages: [
           {
@@ -98,14 +99,25 @@ Return ONLY valid JSON matching this exact structure:
       })
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error("Failed to parse OpenRouter response. Status:", response.status);
+      throw new Error(`API request failed with status ${response.status}: Non-JSON response`);
+    }
 
     if (!response.ok) {
       console.error("OpenRouter API Error:", data);
       throw new Error(`API request failed with status ${response.status}: ${data.error?.message || 'Unknown error'}`);
     }
 
-    let content = data.choices[0].message.content.trim();
+    let content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error("Unexpected API response format:", data);
+      throw new Error("Invalid response structure from AI");
+    }
+    content = content.trim();
     console.log("Raw API Response:", content);
 
     // Extract JSON block using regex if wrapped in markdown, otherwise assume raw JSON

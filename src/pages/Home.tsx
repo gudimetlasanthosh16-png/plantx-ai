@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanLine, ShieldCheck, Zap, Sprout } from 'lucide-react';
+import { ScanLine, ShieldCheck, Zap, Sprout, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Home: React.FC = () => {
@@ -33,14 +33,38 @@ const Home: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mx-auto"
           >
             <button 
               onClick={() => navigate('/scan')}
-              className="bg-primary hover:bg-secondary text-white font-buttons font-semibold text-lg px-8 py-4 rounded-full shadow-lg shadow-primary/30 transition-all flex items-center justify-center mx-auto space-x-2"
+              className="bg-primary hover:bg-secondary text-white font-buttons font-semibold text-lg px-8 py-4 rounded-full shadow-lg shadow-primary/30 transition-all flex items-center justify-center w-full sm:w-auto space-x-2"
             >
               <ScanLine className="h-6 w-6" />
-              <span>Scan Plant Now</span>
+              <span>Take a Photo</span>
             </button>
+            <div className="relative w-full sm:w-auto">
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      navigate('/result', { state: { image: reader.result } });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" 
+              />
+              <button 
+                className="bg-white hover:bg-gray-50 text-primary border-2 border-primary font-buttons font-semibold text-lg px-8 py-4 rounded-full shadow-lg shadow-gray-200 transition-all flex items-center justify-center w-full sm:w-auto space-x-2"
+              >
+                <ImageIcon className="h-6 w-6" />
+                <span>Upload Image</span>
+              </button>
+            </div>
           </motion.div>
         </div>
       </section>

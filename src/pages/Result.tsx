@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { Activity, AlertTriangle, Droplets, Sun, Info, HeartPulse, CheckCircle2, ShieldCheck, Share2, X, Download } from 'lucide-react';
 import { analyzePlantImage, type PlantAnalysisResult } from '../services/api';
 
@@ -104,14 +104,20 @@ const Result: React.FC = () => {
   const handleShareAsImage = async () => {
     if (resultRef.current && result) {
       try {
-        const canvas = await html2canvas(resultRef.current, { scale: 2, useCORS: true });
-        const dataUrl = canvas.toDataURL('image/png');
+        // html-to-image often fails if images aren't fully loaded or if there are CORS issues
+        const dataUrl = await toPng(resultRef.current, { 
+          pixelRatio: 2, 
+          skipFonts: true,
+          cacheBust: true,
+          useCORS: true
+        });
         const link = document.createElement('a');
         link.download = `PlantX-Report-${result.plant_name.replace(/\s+/g, '-')}.png`;
         link.href = dataUrl;
         link.click();
       } catch (error) {
         console.error("Failed to generate image", error);
+        alert("Failed to save image. Please try again or take a manual screenshot.");
       }
     }
   };
@@ -121,15 +127,15 @@ const Result: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-3xl overflow-hidden shadow-xl border border-primary/10"
-        ref={resultRef}
+        className="rounded-3xl shadow-xl border border-primary/10"
       >
+        <div ref={resultRef} className="bg-white rounded-3xl overflow-hidden">
         {/* Header Section */}
         <div className="md:flex">
           <div className="md:w-1/3 relative h-64 md:h-auto">
             <img src={imageSrc} alt="Scanned Plant" className="w-full h-full object-cover" />
             <div className="absolute top-4 left-4">
-              <div className={`px-4 py-1 rounded-full font-bold text-sm border backdrop-blur-md ${getHealthColor(result.health)}`}>
+              <div className={`px-4 py-1 rounded-full font-bold text-sm border bg-white/95 shadow-sm ${getHealthColor(result.health)}`}>
                 {result.health}
               </div>
             </div>
@@ -285,6 +291,7 @@ const Result: React.FC = () => {
             Scan Another Plant
           </button>
         </div>
+        </div>
       </motion.div>
 
       {/* QR Code Modal */}
@@ -320,7 +327,13 @@ const Result: React.FC = () => {
               </div>
 
               <div className="text-center">
-                <p className="text-xs text-gray-400">Powered by PlantX AI</p>
+                {window.location.hostname === 'localhost' ? (
+                  <p className="text-xs text-warning font-semibold">
+                    You are on localhost! Scan this from the same computer, or deploy the app to Vercel to scan with your phone.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400">Powered by PlantX AI</p>
+                )}
               </div>
             </motion.div>
           </div>

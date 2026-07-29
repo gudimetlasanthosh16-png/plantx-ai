@@ -12,6 +12,7 @@
   "dependencies": {
     "@types/lz-string": "^1.3.34",
     "framer-motion": "^12.43.0",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "lucide-react": "^1.27.0",
     "lz-string": "^1.5.0",
