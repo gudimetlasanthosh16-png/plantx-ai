@@ -191,3 +191,62 @@ function mockAnalysis(): Promise<PlantAnalysisResult> {
     }, 3000); // simulate network delay
   });
 };
+
+export const translateAnalysis = async (englishResult: PlantAnalysisResult, targetLanguage: string): Promise<PlantAnalysisResult> => {
+  if (!OPENROUTER_API_KEY) {
+    console.warn("No OpenRouter API key found. Skipping translation.");
+    return englishResult;
+  }
+  
+  if (targetLanguage === 'English') return englishResult;
+
+  const prompt = `
+You are a professional translator.
+Translate ALL string values in the following JSON object into ${targetLanguage}.
+Keep the exact same JSON keys in English. Only translate the values.
+For arrays, translate each item in the array.
+If a value is a medical or scientific term (like the scientific_name), you can leave it in English if it's more appropriate, but try to translate everything else (descriptions, symptoms, treatments).
+IMPORTANT: You MUST respond ONLY with a raw JSON object. Do not include markdown formatting, and do not include any other text.
+
+JSON to translate:
+${JSON.stringify(englishResult)}
+`;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "openrouter/free",
+        max_tokens: 1500,
+        messages: [
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    let content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error("Invalid translation response");
+    
+    let jsonStr = content.trim();
+    const jsonMatch = jsonStr.match(/```(?:json)?\\n([\\s\\S]*?)\\n```/);
+    if (jsonMatch && jsonMatch[1]) {
+      jsonStr = jsonMatch[1];
+    } else {
+      const firstBrace = jsonStr.indexOf('{');
+      const lastBrace = jsonStr.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+      }
+    }
+    
+    return JSON.parse(jsonStr) as PlantAnalysisResult;
+  } catch (error) {
+    console.error("Translation failed:", error);
+    return englishResult; // fallback to English
+  }
+};

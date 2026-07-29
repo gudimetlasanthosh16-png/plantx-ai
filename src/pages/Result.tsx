@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
 import { toPng } from 'html-to-image';
-import { Activity, AlertTriangle, Droplets, Sun, Info, HeartPulse, CheckCircle2, ShieldCheck, Share2, X, Download } from 'lucide-react';
-import { analyzePlantImage, type PlantAnalysisResult } from '../services/api';
+import { Activity, AlertTriangle, Droplets, Sun, Info, HeartPulse, CheckCircle2, ShieldCheck, Share2, X, Download, Volume2, Square, Globe } from 'lucide-react';
+import { analyzePlantImage, translateAnalysis, type PlantAnalysisResult } from '../services/api';
 
 const LoadingScreen = () => {
   const messages = [
@@ -57,6 +57,12 @@ const Result: React.FC = () => {
   const [shareUrl, setShareUrl] = useState('');
   const resultRef = React.useRef<HTMLDivElement>(null);
 
+  const [language, setLanguage] = useState('English');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [cachedResults, setCachedResults] = useState<Record<string, PlantAnalysisResult>>({});
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const synth = window.speechSynthesis;
+
   const imageSrc = location.state?.image;
 
   useEffect(() => {
@@ -69,6 +75,7 @@ const Result: React.FC = () => {
       try {
         const data = await analyzePlantImage(imageSrc);
         setResult(data);
+        setCachedResults({ 'English': data });
       } catch (err) {
         navigate('/error');
       } finally {
@@ -78,6 +85,30 @@ const Result: React.FC = () => {
 
     fetchAnalysis();
   }, [imageSrc, navigate]);
+
+  useEffect(() => {
+    const handleTranslate = async () => {
+      if (!result || language === 'English' || cachedResults[language]) return;
+      setIsTranslating(true);
+      try {
+        const englishResult = cachedResults['English'] || result;
+        const translated = await translateAnalysis(englishResult, language);
+        setCachedResults(prev => ({ ...prev, [language]: translated }));
+        setResult(translated);
+      } catch (err) {
+        console.error("Translation failed", err);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+    handleTranslate();
+  }, [language]);
+
+  useEffect(() => {
+    return () => {
+      if (synth) synth.cancel();
+    }
+  }, [synth]);
 
   if (loading) return <LoadingScreen />;
   if (!result) return null;
@@ -89,6 +120,38 @@ const Result: React.FC = () => {
       case 'Critical': return 'text-danger bg-danger/10 border-danger';
       default: return 'text-gray-500 bg-gray-100 border-gray-300';
     }
+  };
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLang = e.target.value;
+    setLanguage(newLang);
+    if (cachedResults[newLang]) {
+      setResult(cachedResults[newLang]);
+    }
+  };
+
+  const handleSpeak = () => {
+    if (isSpeaking) {
+      synth.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    if (!result) return;
+    synth.cancel(); 
+    
+    let langCode = 'en-US';
+    if (language === 'Telugu') langCode = 'te-IN';
+    if (language === 'Hindi') langCode = 'hi-IN';
+
+    const textToRead = `${result.plant_name}. ${result.disease !== 'None' ? `Condition: ${result.disease}. ${result.cause}. Treatment: ${result.organic_treatment.join(", ")}` : 'The plant is healthy.'}`;
+    
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = langCode;
+    utterance.onend = () => setIsSpeaking(false);
+    
+    setIsSpeaking(true);
+    synth.speak(utterance);
   };
 
   const handleShare = () => {
@@ -108,8 +171,7 @@ const Result: React.FC = () => {
         const dataUrl = await toPng(resultRef.current, { 
           pixelRatio: 2, 
           skipFonts: true,
-          cacheBust: true,
-          useCORS: true
+          cacheBust: true
         });
         const link = document.createElement('a');
         link.download = `PlantX-Report-${result.plant_name.replace(/\s+/g, '-')}.png`;
@@ -141,8 +203,34 @@ const Result: React.FC = () => {
             </div>
           </div>
           
-          <div className="p-8 md:w-2/3 flex flex-col justify-center">
-            <h1 className="text-3xl font-heading font-bold text-dark-background">{result.plant_name}</h1>
+          <div className="p-8 md:w-2/3 flex flex-col justify-center relative">
+            <div className="absolute top-4 right-4 flex gap-2 z-10">
+              <div className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm border border-gray-200 shadow-sm">
+                <Globe className="h-4 w-4 text-gray-500 mr-2" />
+                <select 
+                  value={language} 
+                  onChange={handleLanguageChange}
+                  className="bg-transparent outline-none text-gray-700 font-medium cursor-pointer appearance-none"
+                >
+                  <option value="English">English</option>
+                  <option value="Hindi">हिंदी</option>
+                  <option value="Telugu">తెలుగు</option>
+                </select>
+              </div>
+              
+              <button 
+                onClick={handleSpeak}
+                className={`p-2 rounded-full transition-colors flex items-center justify-center shadow-sm ${isSpeaking ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                title={isSpeaking ? "Stop Reading" : "Read Aloud"}
+              >
+                {isSpeaking ? <Square className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+            </div>
+            
+            <h1 className="text-3xl font-heading font-bold text-dark-background pr-32">
+              {result.plant_name}
+              {isTranslating && <span className="ml-3 text-sm text-primary animate-pulse inline-block">Translating...</span>}
+            </h1>
             <p className="text-gray-500 italic mb-4">{result.scientific_name}</p>
             
             <div className="flex items-center gap-4 mb-6">
