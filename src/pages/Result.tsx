@@ -48,6 +48,75 @@ const LoadingScreen = () => {
   );
 };
 
+const uiTranslations: Record<string, Record<string, string>> = {
+  English: {
+    scanAnother: "Scan Another Plant",
+    overview: "Overview",
+    symptoms: "Symptoms:",
+    cause: "Cause:",
+    scientificAnalysis: "Scientific Analysis",
+    careRecommendations: "Care Recommendations",
+    watering: "Watering",
+    sunlight: "Sunlight",
+    treatmentPlan: "Treatment Plan",
+    organic: "Organic",
+    chemical: "Chemical",
+    estRecovery: "Est. Recovery:",
+    prevention: "Prevention",
+    diseaseDetected: "Disease Detected:",
+    severity: "Severity:",
+    aiConfidence: "AI Confidence",
+    accuracyScore: "Accuracy Score",
+    translating: "Translating...",
+    generatingReport: "Generate QR Report",
+    saveAsImage: "Save as Image"
+  },
+  Hindi: {
+    scanAnother: "एक और पौधा स्कैन करें",
+    overview: "अवलोकन",
+    symptoms: "लक्षण:",
+    cause: "कारण:",
+    scientificAnalysis: "वैज्ञानिक विश्लेषण",
+    careRecommendations: "देखभाल संबंधी सुझाव",
+    watering: "पानी देना",
+    sunlight: "धूप",
+    treatmentPlan: "उपचार योजना",
+    organic: "जैविक",
+    chemical: "रासायनिक",
+    estRecovery: "अनुमानित रिकवरी:",
+    prevention: "रोकथाम",
+    diseaseDetected: "बीमारी का पता चला:",
+    severity: "गंभीरता:",
+    aiConfidence: "एआई विश्वास",
+    accuracyScore: "सटीकता स्कोर",
+    translating: "अनुवाद हो रहा है...",
+    generatingReport: "QR रिपोर्ट जनरेट करें",
+    saveAsImage: "चित्र के रूप में सहेजें"
+  },
+  Telugu: {
+    scanAnother: "మరొక మొక్కను స్కాన్ చేయండి",
+    overview: "అవలోకనం",
+    symptoms: "లక్షణాలు:",
+    cause: "కారణం:",
+    scientificAnalysis: "శాస్త్రీయ విశ్లేషణ",
+    careRecommendations: "సంరక్షణ సిఫార్సులు",
+    watering: "నీరు పోయడం",
+    sunlight: "సూర్యరశ్మి",
+    treatmentPlan: "చికిత్స ప్రణాళిక",
+    organic: "సేంద్రీయ",
+    chemical: "రసాయన",
+    estRecovery: "అంచనా రికవరీ:",
+    prevention: "నివారణ",
+    diseaseDetected: "వ్యాధి గుర్తించబడింది:",
+    severity: "తీవ్రత:",
+    aiConfidence: "AI నమ్మకం",
+    accuracyScore: "ఖచ్చితత్వం స్కోర్",
+    translating: "అనువదిస్తోంది...",
+    generatingReport: "QR రిపోర్ట్ రూపొందించండి",
+    saveAsImage: "చిత్రంగా సేవ్ చేయండి"
+  }
+};
+
 const Result: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -65,11 +134,16 @@ const Result: React.FC = () => {
 
   const imageSrc = location.state?.image;
 
+  const analysisFetched = React.useRef(false);
+
   useEffect(() => {
     if (!imageSrc) {
       navigate('/scan');
       return;
     }
+
+    if (analysisFetched.current) return;
+    analysisFetched.current = true;
 
     const fetchAnalysis = async () => {
       try {
@@ -144,10 +218,19 @@ const Result: React.FC = () => {
     if (language === 'Telugu') langCode = 'te-IN';
     if (language === 'Hindi') langCode = 'hi-IN';
 
-    const textToRead = `${result.plant_name}. ${result.disease !== 'None' ? `Condition: ${result.disease}. ${result.cause}. Treatment: ${result.organic_treatment.join(", ")}` : 'The plant is healthy.'}`;
+    const textToRead = `${result.plant_name}. ${result.disease !== 'None' ? `${result.description}. ${result.organic_treatment.join(", ")}` : result.description || 'The plant is healthy.'}`;
     
     const utterance = new SpeechSynthesisUtterance(textToRead);
     utterance.lang = langCode;
+    
+    // Attempt to find a voice that matches the language
+    const voices = synth.getVoices();
+    const voice = voices.find(v => v.lang.toLowerCase().includes(langCode.toLowerCase()) || v.lang.toLowerCase().includes(langCode.split('-')[0].toLowerCase()) || v.name.toLowerCase().includes(language.toLowerCase()));
+    
+    if (voice) {
+      utterance.voice = voice;
+    }
+
     utterance.onend = () => setIsSpeaking(false);
     
     setIsSpeaking(true);
@@ -189,9 +272,9 @@ const Result: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl shadow-xl border border-primary/10"
+        className="rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] border border-white/20"
       >
-        <div ref={resultRef} className="bg-white rounded-3xl overflow-hidden">
+        <div ref={resultRef} className="glass-card rounded-3xl overflow-hidden">
         {/* Header Section */}
         <div className="md:flex">
           <div className="md:w-1/3 relative h-64 md:h-auto">
@@ -229,7 +312,7 @@ const Result: React.FC = () => {
             
             <h1 className="text-3xl font-heading font-bold text-dark-background pr-32">
               {result.plant_name}
-              {isTranslating && <span className="ml-3 text-sm text-primary animate-pulse inline-block">Translating...</span>}
+              {isTranslating && <span className="ml-3 text-sm text-primary animate-pulse inline-block">{uiTranslations[language]?.translating || 'Translating...'}</span>}
             </h1>
             <p className="text-gray-500 italic mb-4">{result.scientific_name}</p>
             
@@ -238,8 +321,8 @@ const Result: React.FC = () => {
                 <span className="font-bold text-dark-background">{result.confidence}%</span>
               </div>
               <div>
-                <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">AI Confidence</p>
-                <p className="font-medium text-dark-background">Accuracy Score</p>
+                <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">{uiTranslations[language]?.aiConfidence || 'AI Confidence'}</p>
+                <p className="font-medium text-dark-background">{uiTranslations[language]?.accuracyScore || 'Accuracy Score'}</p>
               </div>
             </div>
 
@@ -247,8 +330,8 @@ const Result: React.FC = () => {
               <div className="bg-danger/5 border border-danger/20 rounded-xl p-4 flex gap-3 items-start">
                 <AlertTriangle className="text-danger flex-shrink-0 mt-1" />
                 <div className="flex-1">
-                  <h3 className="font-bold text-danger">Disease Detected: {result.disease}</h3>
-                  <p className="text-sm text-gray-600 mt-1">Severity: <span className="font-semibold">{result.severity}</span></p>
+                  <h3 className="font-bold text-danger">{uiTranslations[language]?.diseaseDetected || 'Disease Detected:'} {result.disease}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{uiTranslations[language]?.severity || 'Severity:'} <span className="font-semibold">{result.severity}</span></p>
                 </div>
               </div>
             )}
@@ -259,14 +342,14 @@ const Result: React.FC = () => {
                 className="w-full bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
                >
                  <Share2 className="h-5 w-5" />
-                 Generate QR Report
+                 {uiTranslations[language]?.generatingReport || 'Generate QR Report'}
                </button>
                <button 
                 onClick={handleShareAsImage}
                 className="w-full bg-primary border-2 border-primary text-white hover:bg-primary/90 hover:border-primary/90 transition-colors font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
                >
                  <Download className="h-5 w-5" />
-                 Save as Image
+                 {uiTranslations[language]?.saveAsImage || 'Save as Image'}
                </button>
             </div>
           </div>
@@ -279,23 +362,23 @@ const Result: React.FC = () => {
             {/* Left Column */}
             <div className="space-y-6">
               {result.disease !== 'None' && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div className="glass p-6 rounded-2xl">
                   <h3 className="text-lg font-heading font-bold text-dark-background mb-4 flex items-center gap-2">
-                    <Info className="text-primary" /> Overview
+                    <Info className="text-primary" /> {uiTranslations[language]?.overview || 'Overview'}
                   </h3>
                   <p className="text-text text-sm leading-relaxed mb-4">{result.description}</p>
                   
-                  <h4 className="font-semibold text-dark-background mb-2 text-sm">Symptoms:</h4>
+                  <h4 className="font-semibold text-dark-background mb-2 text-sm">{uiTranslations[language]?.symptoms || 'Symptoms:'}</h4>
                   <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mb-4">
                     {result.symptoms.map((sym, i) => <li key={i}>{sym}</li>)}
                   </ul>
 
-                  <h4 className="font-semibold text-dark-background mb-2 text-sm">Cause:</h4>
+                  <h4 className="font-semibold text-dark-background mb-2 text-sm">{uiTranslations[language]?.cause || 'Cause:'}</h4>
                   <p className="text-sm text-gray-600 mb-4">{result.cause}</p>
 
                   <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 mt-4">
                     <h4 className="font-semibold text-dark-background mb-2 text-sm flex items-center gap-2">
-                       Scientific Analysis
+                       {uiTranslations[language]?.scientificAnalysis || 'Scientific Analysis'}
                     </h4>
                     <p className="text-sm text-gray-700 leading-relaxed italic">
                       {result.detailed_reasoning}
@@ -304,22 +387,22 @@ const Result: React.FC = () => {
                 </div>
               )}
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="glass p-6 rounded-2xl">
                 <h3 className="text-lg font-heading font-bold text-dark-background mb-4 flex items-center gap-2">
-                  <HeartPulse className="text-accent" /> Care Recommendations
+                  <HeartPulse className="text-accent" /> {uiTranslations[language]?.careRecommendations || 'Care Recommendations'}
                 </h3>
                 <div className="space-y-4">
                   <div className="flex gap-3">
                     <Droplets className="text-blue-500 flex-shrink-0" />
                     <div>
-                      <p className="font-semibold text-sm text-dark-background">Watering</p>
+                      <p className="font-semibold text-sm text-dark-background">{uiTranslations[language]?.watering || 'Watering'}</p>
                       <p className="text-sm text-gray-600">{result.water}</p>
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <Sun className="text-warning flex-shrink-0" />
                     <div>
-                      <p className="font-semibold text-sm text-dark-background">Sunlight</p>
+                      <p className="font-semibold text-sm text-dark-background">{uiTranslations[language]?.sunlight || 'Sunlight'}</p>
                       <p className="text-sm text-gray-600">{result.sunlight}</p>
                     </div>
                   </div>
@@ -331,33 +414,33 @@ const Result: React.FC = () => {
             <div className="space-y-6">
               {result.disease !== 'None' && (
                 <>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <div className="glass p-6 rounded-2xl">
                     <h3 className="text-lg font-heading font-bold text-dark-background mb-4 flex items-center gap-2">
-                      <CheckCircle2 className="text-secondary" /> Treatment Plan
+                      <CheckCircle2 className="text-secondary" /> {uiTranslations[language]?.treatmentPlan || 'Treatment Plan'}
                     </h3>
                     
                     <div className="mb-4">
-                      <h4 className="font-semibold text-dark-background mb-2 text-sm bg-secondary/10 inline-block px-3 py-1 rounded-md text-secondary">Organic</h4>
+                      <h4 className="font-semibold text-dark-background mb-2 text-sm bg-secondary/10 inline-block px-3 py-1 rounded-md text-secondary">{uiTranslations[language]?.organic || 'Organic'}</h4>
                       <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mt-2">
                         {result.organic_treatment.map((t, i) => <li key={i}>{t}</li>)}
                       </ul>
                     </div>
                     
                     <div>
-                      <h4 className="font-semibold text-dark-background mb-2 text-sm bg-gray-100 inline-block px-3 py-1 rounded-md text-gray-600">Chemical</h4>
+                      <h4 className="font-semibold text-dark-background mb-2 text-sm bg-gray-100 inline-block px-3 py-1 rounded-md text-gray-600">{uiTranslations[language]?.chemical || 'Chemical'}</h4>
                       <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mt-2">
                         {result.chemical_treatment.map((t, i) => <li key={i}>{t}</li>)}
                       </ul>
                     </div>
                     
                     <div className="mt-4 pt-4 border-t border-gray-100">
-                      <p className="text-sm"><span className="font-semibold text-dark-background">Est. Recovery:</span> {result.recovery_time}</p>
+                      <p className="text-sm"><span className="font-semibold text-dark-background">{uiTranslations[language]?.estRecovery || 'Est. Recovery:'}</span> {result.recovery_time}</p>
                     </div>
                   </div>
                   
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <div className="glass p-6 rounded-2xl">
                     <h3 className="text-lg font-heading font-bold text-dark-background mb-4 flex items-center gap-2">
-                      <ShieldCheck className="text-primary" /> Prevention
+                      <ShieldCheck className="text-primary" /> {uiTranslations[language]?.prevention || 'Prevention'}
                     </h3>
                     <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
                       {result.prevention.map((p, i) => <li key={i}>{p}</li>)}
@@ -371,12 +454,12 @@ const Result: React.FC = () => {
         </div>
         
         {/* Actions */}
-        <div className="p-6 bg-white border-t border-gray-100 text-center">
+        <div className="p-6 bg-white/50 backdrop-blur-sm border-t border-white/20 text-center">
           <button 
             onClick={() => navigate('/scan')}
             className="text-primary font-medium hover:text-secondary transition"
           >
-            Scan Another Plant
+            {uiTranslations[language]?.scanAnother || 'Scan Another Plant'}
           </button>
         </div>
         </div>

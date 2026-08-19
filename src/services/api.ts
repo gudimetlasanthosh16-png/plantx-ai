@@ -1,3 +1,5 @@
+import { puter } from '@heyputer/puter.js';
+
 export interface PlantAnalysisResult {
   plant_name: string;
   scientific_name: string;
@@ -18,71 +20,134 @@ export interface PlantAnalysisResult {
   recovery_time: string;
 }
 
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
-
-export const analyzePlantImage = async (base64Image: string): Promise<PlantAnalysisResult> => {
-  if (!OPENROUTER_API_KEY) {
-    console.warn("No OpenRouter API key found. Using mock data.");
-    return mockAnalysis();
+/**
+ * Dynamically resolves Puter.js from the global window or npm module.
+ */
+async function getPuterInstance(): Promise<any> {
+  if (typeof window !== 'undefined' && (window as any).puter?.ai) {
+    return (window as any).puter;
   }
 
-  const prompt = `
-You are a professional agricultural and botanical expert.
-Analyze the uploaded plant image in extreme detail based specifically on the visual evidence in the image.
-If the image is blurry, low quality, or hard to see, DO NOT refuse to answer and DO NOT output an error. Instead, do your absolute best to guess the plant and its condition based on whatever shapes or colors are visible. Be as lenient as possible to provide a helpful analysis.
-IMPORTANT: You MUST respond ONLY with a raw JSON object. Do not include markdown formatting, and do not include any other text. 
-Identify:
-- Plant Name
-- Scientific Name
-- Plant Health (Must be exactly one of: 'Healthy', 'Warning', 'Critical')
-- Disease (If none, write 'None')
-- Confidence Percentage (number 0-100)
-- Symptoms (Array of strings)
-- Cause (string - brief summary)
-- Detailed Reasoning (string - extensive explanation of exactly why this condition occurs, covering biological, environmental, and physical factors specific to this leaf)
-- Severity (string, e.g., 'Low', 'Medium', 'High')
-- Description (string - detailed analysis of the leaf's appearance and condition)
-- Prevention (Array of strings)
-- Organic Treatment (Array of strings)
-- Chemical Treatment (Array of strings)
-- Water Recommendation (string)
-- Sunlight Recommendation (string)
-- Fertilizer Recommendation (string)
-- Estimated Recovery Time (string)
+  if (puter && (puter as any).ai) {
+    return puter;
+  }
 
-Return ONLY valid JSON matching this exact structure:
+  // Wait briefly in case the script tag in index.html is still loading
+  let attempts = 25;
+  while (attempts > 0) {
+    if (typeof window !== 'undefined' && (window as any).puter?.ai) {
+      return (window as any).puter;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    attempts--;
+  }
+
+  if (typeof window !== 'undefined' && (window as any).puter?.ai) {
+    return (window as any).puter;
+  }
+
+  if (puter) {
+    return puter;
+  }
+
+  throw new Error("Puter.js AI is not available. Please check your internet connection and reload.");
+}
+
+/**
+ * Extracts and parses a JSON object from AI output string.
+ */
+function parseJsonFromAiResponse(content: string): any {
+  if (!content) throw new Error("Empty AI response");
+  
+  let jsonStr = content.trim();
+
+  // 1. Check for markdown code blocks (```json ... ``` or ``` ... ```)
+  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (jsonMatch && jsonMatch[1]) {
+    jsonStr = jsonMatch[1].trim();
+  } else {
+    // 2. Locate the outermost curly braces
+    const firstBrace = jsonStr.indexOf('{');
+    const lastBrace = jsonStr.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    }
+  }
+
+  return JSON.parse(jsonStr);
+}
+
+/**
+ * Analyzes a plant image using Puter.js AI Vision.
+ * Identifies the exact plant species and condition, producing unique, tree-specific care data.
+ */
+export const analyzePlantImage = async (base64Image: string): Promise<PlantAnalysisResult> => {
+  const puter = await getPuterInstance();
+
+  const prompt = `
+You are a world-class agricultural botanist, plant pathologist, and arboriculture specialist.
+
+INSTRUCTIONS:
+1. Examine this EXACT uploaded plant/tree leaf image very carefully.
+2. Accurately identify:
+   - The EXACT Plant/Tree species name (e.g. Mango Tree, Apple Tree, Neem Tree, Coconut Palm, Banana Plant, Tomato Plant, Citrus/Lemon Tree, Guava Tree, Rose Plant, Rice Crop, Cotton, etc.).
+   - The Scientific Name (e.g. Mangifera indica, Solanum lycopersicum, Citrus limon, etc.).
+   - Health status: MUST be one of 'Healthy', 'Warning', or 'Critical'.
+   - Precise Disease/Condition (e.g. "Anthracnose", "Powdery Mildew", "Bacterial Canker", "Citrus Greening", "Leaf Curl Virus", "Black Spot", "Early Blight", "Rust", "Nutrient Deficiency", or "None" if healthy).
+   - Confidence Percentage (number 0-100).
+   - Severity ('None', 'Low', 'Medium', 'High', 'Critical').
+3. CRITICAL CUSTOMIZATION REQUIREMENT:
+   - ALL recommendations, treatments, prevention, watering, sunlight, fertilizer, and reasoning MUST BE 100% SPECIFIC TO THIS IDENTIFIED TREE/PLANT SPECIES AND THIS SPECIFIC DISEASE.
+   - DO NOT provide generic, templated, or repeated advice.
+   - For organic_treatment: Give 2-4 actionable organic remedies formulated specifically for this tree species (e.g., neem oil dilution for mangoes, copper soap for tomatoes, wood ash/compost tea for citrus).
+   - For chemical_treatment: Give 2-3 specific agricultural fungicide/insecticide chemical active ingredients and dosages suited for this crop (e.g., Chlorothalonil, Mancozeb, Difenoconazole, Imidacloprid, Copper Oxychloride). If healthy, recommend general protective micronutrient sprays.
+   - For water: Specific watering requirements for this plant species (deep watering, drip frequency, soil moisture level).
+   - For sunlight: Specific daily sun requirement for this plant species (e.g., "Full sun 6-8 hours", "Partial shade").
+   - For fertilizer: Specific N-P-K and micronutrient needs for this tree/plant (e.g. Potassium-rich 10-10-20, compost, zinc foliar spray).
+   - For recovery_time: Realistic healing timeline for this specific species.
+   - For detailed_reasoning: Provide a comprehensive biological, environmental, and pathological explanation of how and why this condition manifests on this particular plant.
+
+4. OUTPUT FORMAT:
+Respond ONLY with a valid, raw JSON object matching this exact schema:
 {
-  "plant_name":"",
-  "scientific_name":"",
-  "health":"",
-  "disease":"",
-  "confidence":0,
-  "severity":"",
-  "description":"",
-  "symptoms":[],
-  "cause":"",
-  "detailed_reasoning":"",
-  "prevention":[],
-  "organic_treatment":[],
-  "chemical_treatment":[],
-  "water":"",
-  "sunlight":"",
-  "fertilizer":"",
-  "recovery_time":""
+  "plant_name": "Identified Common Plant Name",
+  "scientific_name": "Scientific botanical name",
+  "health": "Healthy",
+  "disease": "Specific Disease Name or None",
+  "confidence": 95,
+  "severity": "Medium",
+  "description": "Visual diagnostic summary of the leaf appearance and observed symptoms",
+  "symptoms": ["Specific observed symptom 1", "Specific symptom 2", "Specific symptom 3"],
+  "cause": "Specific biological pathogen or environmental cause",
+  "detailed_reasoning": "In-depth scientific and biological explanation tailored to this exact plant species",
+  "prevention": ["Prevention tip 1 for this plant", "Prevention tip 2 for this plant", "Prevention tip 3"],
+  "organic_treatment": ["Specific organic remedy 1", "Specific organic remedy 2"],
+  "chemical_treatment": ["Specific chemical active ingredient / spray 1", "Specific chemical treatment 2"],
+  "water": "Specific watering instructions for this tree/plant",
+  "sunlight": "Specific sunlight guidance for this species",
+  "fertilizer": "Specific fertilizer recommendation (NPK / organic compost) for this plant",
+  "recovery_time": "Realistic recovery duration"
 }
 `;
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        max_tokens: 800,
-        messages: [
+  // List of vision-capable models to try via Puter.js in order
+  const visionModels = ['gpt-4o', 'gemini-2.5-flash', 'claude-3-5-sonnet', 'gpt-4o-mini', 'claude-sonnet-4'];
+
+  let lastError: any = null;
+
+  for (const model of visionModels) {
+    try {
+      console.log(`Analyzing plant image using Puter.js model: ${model}...`);
+
+      let response: any = null;
+
+      // Method 1: puter.ai.chat with prompt and image parameter
+      try {
+        response = await puter.ai.chat(prompt, base64Image, { model });
+      } catch (err1) {
+        console.warn(`Puter.js direct image call failed for ${model}, trying multimodal message structure:`, err1);
+        // Method 2: multimodal messages structure
+        response = await puter.ai.chat([
           {
             role: "user",
             content: [
@@ -95,158 +160,83 @@ Return ONLY valid JSON matching this exact structure:
               }
             ]
           }
-        ]
-      })
-    });
-
-    let data;
-    try {
-      data = await response.json();
-    } catch (parseError) {
-      console.error("Failed to parse OpenRouter response. Status:", response.status);
-      throw new Error(`API request failed with status ${response.status}: Non-JSON response`);
-    }
-
-    if (!response.ok) {
-      console.error("OpenRouter API Error:", data);
-      throw new Error(`API request failed with status ${response.status}: ${data.error?.message || 'Unknown error'}`);
-    }
-
-    let content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      console.error("Unexpected API response format:", data);
-      throw new Error("Invalid response structure from AI");
-    }
-    content = content.trim();
-    console.log("Raw API Response:", content);
-
-    // Extract JSON block using regex if wrapped in markdown, otherwise assume raw JSON
-    let jsonStr = content;
-    const jsonMatch = content.match(/```(?:json)?\n([\s\S]*?)\n```/);
-    if (jsonMatch && jsonMatch[1]) {
-      jsonStr = jsonMatch[1];
-    } else {
-      // Fallback: Try to find first '{' and last '}'
-      const firstBrace = content.indexOf('{');
-      const lastBrace = content.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        jsonStr = content.substring(firstBrace, lastBrace + 1);
+        ], { model });
       }
-    }
 
-    try {
-      const parsed = JSON.parse(jsonStr);
-      // Validate that it has at least some required fields
-      if (!parsed.plant_name) {
-         throw new Error("Invalid response format from AI");
+      const rawContent = response?.message?.content || response?.text || (typeof response === 'string' ? response : JSON.stringify(response));
+
+      if (rawContent) {
+        const parsed = parseJsonFromAiResponse(rawContent);
+        if (parsed && parsed.plant_name) {
+          // Normalize health field
+          if (!['Healthy', 'Warning', 'Critical'].includes(parsed.health)) {
+            parsed.health = parsed.disease && parsed.disease.toLowerCase() !== 'none' ? 'Warning' : 'Healthy';
+          }
+          // Ensure array fields are arrays
+          parsed.symptoms = Array.isArray(parsed.symptoms) ? parsed.symptoms : [parsed.symptoms || "Visual leaf damage"];
+          parsed.prevention = Array.isArray(parsed.prevention) ? parsed.prevention : [parsed.prevention || "Maintain good plant hygiene"];
+          parsed.organic_treatment = Array.isArray(parsed.organic_treatment) ? parsed.organic_treatment : [parsed.organic_treatment || "Neem oil spray"];
+          parsed.chemical_treatment = Array.isArray(parsed.chemical_treatment) ? parsed.chemical_treatment : [parsed.chemical_treatment || "Consult local agricultural extension for registered fungicides"];
+
+          return parsed as PlantAnalysisResult;
+        }
       }
-      return parsed as PlantAnalysisResult;
-    } catch (e) {
-      console.error("Failed to parse AI response. Raw string was:", jsonStr);
-      throw new Error("Failed to interpret AI response. Please try scanning again.");
+    } catch (err) {
+      console.error(`Puter model ${model} error:`, err);
+      lastError = err;
     }
-  } catch (error) {
-    console.error("Error analyzing image:", error);
-    throw error;
   }
+
+  // Fallback: Default Puter chat if named models encountered issues
+  try {
+    console.log("Attempting fallback with default Puter.js vision chat...");
+    const fallbackResponse = await puter.ai.chat(prompt, base64Image);
+    const rawContent = fallbackResponse?.message?.content || fallbackResponse?.text || (typeof fallbackResponse === 'string' ? fallbackResponse : '');
+    if (rawContent) {
+      const parsed = parseJsonFromAiResponse(rawContent);
+      if (parsed && parsed.plant_name) {
+        return parsed as PlantAnalysisResult;
+      }
+    }
+  } catch (err) {
+    console.error("Fallback Puter.js chat failed:", err);
+    lastError = err;
+  }
+
+  throw lastError || new Error("Failed to analyze image using Puter.js. Please verify your internet connection and try again.");
 };
 
-function mockAnalysis(): Promise<PlantAnalysisResult> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        plant_name: "Tomato Plant",
-        scientific_name: "Solanum lycopersicum",
-        health: "Critical",
-        disease: "Early Blight",
-        confidence: 94,
-        severity: "High",
-        description: "Early blight is a common tomato disease caused by the fungus Alternaria solani. It can affect leaves, stems, and fruit.",
-        symptoms: [
-          "Dark, concentric spots on lower leaves",
-          "Yellowing around the spots",
-          "Leaf drop in severe cases"
-        ],
-        cause: "Fungus Alternaria solani, often thriving in warm, humid conditions.",
-        detailed_reasoning: "Early blight is primarily driven by the fungus Alternaria solani. It thrives in warm (75-85°F) and highly humid environments. The spores are typically soil-borne and splash onto lower leaves during heavy rain or overhead watering. Once attached, the fungus penetrates the leaf tissue, causing the distinct target-like concentric rings visible on the affected areas. If left untreated, the fungus rapidly moves up the plant canopy, severely reducing photosynthetic capacity and crop yield.",
-        prevention: [
-          "Crop rotation",
-          "Ensure good air circulation",
-          "Avoid overhead watering"
-        ],
-        organic_treatment: [
-          "Copper-based fungicides",
-          "Remove and destroy infected leaves",
-          "Neem oil application"
-        ],
-        chemical_treatment: [
-          "Chlorothalonil based fungicides",
-          "Mancozeb fungicides"
-        ],
-        water: "Water at the base, 1-2 inches per week.",
-        sunlight: "Full sun (6-8 hours daily)",
-        fertilizer: "Balanced fertilizer (10-10-10), avoid excess nitrogen",
-        recovery_time: "2-3 weeks with proper treatment"
-      });
-    }, 3000); // simulate network delay
-  });
-};
-
+/**
+ * Translates the structured analysis result into target language (Hindi, Telugu, etc.) using Puter.js AI.
+ */
 export const translateAnalysis = async (englishResult: PlantAnalysisResult, targetLanguage: string): Promise<PlantAnalysisResult> => {
-  if (!OPENROUTER_API_KEY) {
-    console.warn("No OpenRouter API key found. Skipping translation.");
-    return englishResult;
-  }
-  
   if (targetLanguage === 'English') return englishResult;
 
-  const prompt = `
-You are a professional translator.
-Translate ALL string values in the following JSON object into ${targetLanguage}.
-Keep the exact same JSON keys in English. Only translate the values.
-For arrays, translate each item in the array.
-If a value is a medical or scientific term (like the scientific_name), you can leave it in English if it's more appropriate, but try to translate everything else (descriptions, symptoms, treatments).
-IMPORTANT: You MUST respond ONLY with a raw JSON object. Do not include markdown formatting, and do not include any other text.
+  try {
+    const puter = await getPuterInstance();
 
-JSON to translate:
-${JSON.stringify(englishResult)}
+    const prompt = `
+Translate ONLY the string values of this JSON into ${targetLanguage}.
+CRITICAL INSTRUCTIONS:
+1. DO NOT translate the JSON keys. Keep keys exactly as they are in English (e.g., "plant_name", "symptoms", "organic_treatment", etc.).
+2. Keep the "health" value as exactly one of: "Healthy", "Warning", or "Critical".
+3. Return ONLY valid, raw JSON. No markdown fences, no explanations.
+
+${JSON.stringify(englishResult, null, 2)}
 `;
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        max_tokens: 1500,
-        messages: [
-          { role: "user", content: prompt }
-        ]
-      })
-    });
+    const response = await puter.ai.chat(prompt, { model: 'gpt-4o-mini' });
+    const rawContent = response?.message?.content || response?.text || (typeof response === 'string' ? response : '');
 
-    const data = await response.json();
-    let content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Invalid translation response");
-    
-    let jsonStr = content.trim();
-    const jsonMatch = jsonStr.match(/```(?:json)?\\n([\\s\\S]*?)\\n```/);
-    if (jsonMatch && jsonMatch[1]) {
-      jsonStr = jsonMatch[1];
-    } else {
-      const firstBrace = jsonStr.indexOf('{');
-      const lastBrace = jsonStr.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    if (rawContent) {
+      const parsed = parseJsonFromAiResponse(rawContent);
+      if (parsed && parsed.plant_name) {
+        return parsed as PlantAnalysisResult;
       }
     }
-    
-    return JSON.parse(jsonStr) as PlantAnalysisResult;
   } catch (error) {
-    console.error("Translation failed:", error);
-    return englishResult; // fallback to English
+    console.error("Translation via Puter.js failed:", error);
   }
+
+  return englishResult;
 };

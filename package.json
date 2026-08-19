@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heyputer/puter.js": "^2.6.1",
     "@types/lz-string": "^1.3.34",
     "framer-motion": "^12.43.0",
     "html-to-image": "^1.11.13",
