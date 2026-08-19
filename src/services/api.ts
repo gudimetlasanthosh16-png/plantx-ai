@@ -1,5 +1,3 @@
-import { puter } from '@heyputer/puter.js';
-
 export interface PlantAnalysisResult {
   plant_name: string;
   scientific_name: string;
@@ -21,36 +19,42 @@ export interface PlantAnalysisResult {
 }
 
 /**
- * Dynamically resolves Puter.js from the global window or npm module.
+ * Dynamically resolves Puter.js from window or loads the script if needed.
  */
-async function getPuterInstance(): Promise<any> {
-  if (typeof window !== 'undefined' && (window as any).puter?.ai) {
-    return (window as any).puter;
+async function getPuter(): Promise<any> {
+  if (typeof window === 'undefined') {
+    throw new Error('Puter.js can only be run in the browser.');
   }
 
-  if (puter && (puter as any).ai) {
-    return puter;
+  const getGlobalPuter = () => (window as any).puter;
+
+  if (getGlobalPuter()?.ai) {
+    return getGlobalPuter();
   }
 
-  // Wait briefly in case the script tag in index.html is still loading
-  let attempts = 25;
-  while (attempts > 0) {
-    if (typeof window !== 'undefined' && (window as any).puter?.ai) {
-      return (window as any).puter;
+  // Ensure script is injected if not already present
+  if (!document.querySelector('script[src*="js.puter.com"]')) {
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.async = true;
+    document.head.appendChild(script);
+  }
+
+  // Poll for availability
+  let retries = 50;
+  while (retries > 0) {
+    if (getGlobalPuter()?.ai) {
+      return getGlobalPuter();
     }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    attempts--;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    retries--;
   }
 
-  if (typeof window !== 'undefined' && (window as any).puter?.ai) {
-    return (window as any).puter;
+  if (getGlobalPuter()?.ai) {
+    return getGlobalPuter();
   }
 
-  if (puter) {
-    return puter;
-  }
-
-  throw new Error("Puter.js AI is not available. Please check your internet connection and reload.");
+  throw new Error('Puter AI could not be loaded. Please check your internet connection and refresh.');
 }
 
 /**
@@ -82,7 +86,7 @@ function parseJsonFromAiResponse(content: string): any {
  * Identifies the exact plant species and condition, producing unique, tree-specific care data.
  */
 export const analyzePlantImage = async (base64Image: string): Promise<PlantAnalysisResult> => {
-  const puter = await getPuterInstance();
+  const puter = await getPuter();
 
   const prompt = `
 You are a world-class agricultural botanist, plant pathologist, and arboriculture specialist.
@@ -141,12 +145,10 @@ Respond ONLY with a valid, raw JSON object matching this exact schema:
 
       let response: any = null;
 
-      // Method 1: puter.ai.chat with prompt and image parameter
       try {
         response = await puter.ai.chat(prompt, base64Image, { model });
       } catch (err1) {
-        console.warn(`Puter.js direct image call failed for ${model}, trying multimodal message structure:`, err1);
-        // Method 2: multimodal messages structure
+        console.warn(`Puter direct image parameter failed for ${model}, trying multimodal format:`, err1);
         response = await puter.ai.chat([
           {
             role: "user",
@@ -172,7 +174,6 @@ Respond ONLY with a valid, raw JSON object matching this exact schema:
           if (!['Healthy', 'Warning', 'Critical'].includes(parsed.health)) {
             parsed.health = parsed.disease && parsed.disease.toLowerCase() !== 'none' ? 'Warning' : 'Healthy';
           }
-          // Ensure array fields are arrays
           parsed.symptoms = Array.isArray(parsed.symptoms) ? parsed.symptoms : [parsed.symptoms || "Visual leaf damage"];
           parsed.prevention = Array.isArray(parsed.prevention) ? parsed.prevention : [parsed.prevention || "Maintain good plant hygiene"];
           parsed.organic_treatment = Array.isArray(parsed.organic_treatment) ? parsed.organic_treatment : [parsed.organic_treatment || "Neem oil spray"];
@@ -213,7 +214,7 @@ export const translateAnalysis = async (englishResult: PlantAnalysisResult, targ
   if (targetLanguage === 'English') return englishResult;
 
   try {
-    const puter = await getPuterInstance();
+    const puter = await getPuter();
 
     const prompt = `
 Translate ONLY the string values of this JSON into ${targetLanguage}.
