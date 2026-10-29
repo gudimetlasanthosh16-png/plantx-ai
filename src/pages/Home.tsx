@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import HeroLeft from '../components/HeroLeft';
 import HeroRight from '../components/HeroRight';
 import LanguageSelector from '../components/LanguageSelector';
+import MobileWidgetBanner from '../components/MobileWidgetBanner';
 import { LiquidEffectAnimation } from '@/components/ui/liquid-effect-animation';
 import { SAMPLE_PLANTS, type SamplePlant } from '../data/samplePlants';
 import { useLanguage } from '../context/LanguageContext';
@@ -61,6 +62,9 @@ const Home: React.FC = () => {
       
       {/* Foreground Content Stack */}
       <div className="relative z-10">
+        
+        {/* Mobile & Tablet Add to Widget / Quick-Scan Banner */}
+        <MobileWidgetBanner />
         
         {/* Floating Multilingual & Read Aloud Control (Matching user screenshot) */}
         <div className="fixed top-24 right-6 z-40 hidden sm:block animate-in fade-in slide-in-from-top-4 duration-300">

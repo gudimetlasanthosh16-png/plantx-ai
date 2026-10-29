@@ -18,6 +18,9 @@ function RootIndexHandler() {
   if (searchParams.get('data') || searchParams.get('share')) {
     return <SharedReport />;
   }
+  if (searchParams.get('instant') === 'true') {
+    return <Scanner />;
+  }
   return <Home />;
 }
 
@@ -31,6 +34,7 @@ function App() {
             <Routes>
               <Route path="/" element={<RootIndexHandler />} />
               <Route path="/scan" element={<Scanner />} />
+              <Route path="/scanner" element={<Scanner />} />
               <Route path="/result" element={<Result />} />
               <Route path="/share" element={<SharedReport />} />
               <Route path="/error" element={<ErrorScreen />} />

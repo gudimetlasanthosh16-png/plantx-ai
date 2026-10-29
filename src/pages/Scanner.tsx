@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Camera, 
   Upload, 
@@ -12,7 +12,8 @@ import {
   Info,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SAMPLE_PLANTS } from '../data/samplePlants';
@@ -24,6 +25,8 @@ const Scanner: React.FC = () => {
   const [showGrid, setShowGrid] = useState(true);
   const [hasCameraError, setHasCameraError] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isInstant = searchParams.get('instant') === 'true';
 
   const capture = useCallback(() => {
     const screenshot = webcamRef.current?.getScreenshot();
@@ -65,10 +68,17 @@ const Scanner: React.FC = () => {
         
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold uppercase tracking-wider mb-2 border border-emerald-200">
-            <Focus className="w-3.5 h-3.5" />
-            <span>AI Optical Viewfinder</span>
-          </div>
+          {isInstant ? (
+            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider mb-2 shadow-lg shadow-emerald-600/30 animate-pulse">
+              <Zap className="w-4 h-4 text-amber-300" />
+              <span>Instant Home Screen Widget Mode</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold uppercase tracking-wider mb-2 border border-emerald-200">
+              <Focus className="w-3.5 h-3.5" />
+              <span>AI Optical Viewfinder</span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-slate-900">
             Scan Affected Leaf
           </h1>
