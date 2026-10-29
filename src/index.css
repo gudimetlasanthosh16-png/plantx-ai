@@ -1,52 +1,88 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 @import 'tailwindcss';
 
 @theme {
-  --color-primary: #2D5A27;
-  --color-secondary: #4A7C43;
-  --color-accent: #D4B895;
-  --color-danger: #D9534F;
-  --color-warning: #F5A623;
-  --color-background: #F9F8F4;
-  --color-dark-background: #1A1C19;
-  --color-text: #2D332B;
+  --color-emerald-base: #009e52;
+  --color-emerald-dark: #1d6b38;
+  --color-emerald-darker: #144b27;
+  --color-emerald-hover: #008947;
 
-  --font-heading: 'Poppins', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-buttons: 'Poppins', sans-serif;
+  --color-primary: #009e52;
+  --color-primary-hover: #1d6b38;
+  --color-primary-light: #22c55e;
+  --color-secondary: #0d9488;
+  --color-accent: #eab308;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-background: #ffffff;
+  --color-dark-background: #0d1611;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-space: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-buttons: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Space Grotesk', monospace;
 }
 
 @layer utilities {
+  .font-space {
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .font-sans {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
   .glass {
-    background-color: color-mix(in srgb, white 40%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in srgb, white 50%, transparent);
-    box-shadow: 0 8px 32px 0 rgba(31,38,135,0.07);
-  }
-  .glass-dark {
-    background-color: color-mix(in srgb, black 20%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in srgb, white 10%, transparent);
-    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.1);
-  }
-  .glass-card {
-    background-color: color-mix(in srgb, white 60%, transparent);
+    background-color: rgba(255, 255, 255, 0.75);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid color-mix(in srgb, white 60%, transparent);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px -10px rgba(0, 158, 82, 0.08);
+  }
+  .glass-dark {
+    background-color: rgba(13, 22, 17, 0.78);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+  }
+  .glass-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 20px 40px -15px rgba(29, 107, 56, 0.07), 0 0 1px 1px rgba(255, 255, 255, 0.9);
+  }
+  .glass-glow {
+    box-shadow: 0 0 35px -5px rgba(0, 158, 82, 0.25);
+  }
+  .bg-radial-mesh {
+    background-image: 
+      radial-gradient(at 15% 15%, rgba(0, 158, 82, 0.08) 0px, transparent 50%),
+      radial-gradient(at 85% 25%, rgba(13, 148, 136, 0.06) 0px, transparent 50%),
+      radial-gradient(at 50% 85%, rgba(0, 158, 82, 0.04) 0px, transparent 50%);
+  }
+  .bg-grid-pattern {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, rgba(0, 158, 82, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 158, 82, 0.04) 1px, transparent 1px);
   }
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     font-family: var(--font-body);
     color: var(--color-text);
-    background-color: var(--color-background);
+    background-color: #ffffff;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading);
+    font-family: var(--font-space);
+    letter-spacing: -0.025em;
   }
 }
